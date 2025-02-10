@@ -444,12 +444,12 @@ void StelApp::init(QSettings* conf)
 	gl = QOpenGLContext::currentContext()->functions();
 	confSettings = conf;
 
-	devicePixelsPerPixel = QOpenGLContext::currentContext()->screen()->devicePixelRatio();
-	if (devicePixelsPerPixel>1)
-		qDebug() << "Detected a high resolution device! Device pixel ratio:" << devicePixelsPerPixel;
+	devicePixelsPerPixel = StelMainView::getInstance().devicePixelRatioF();
+	qDebug() << "Initial high-DPI scaling factor:" << devicePixelsPerPixel;
 
 	setScreenFontSize(confSettings->value("gui/screen_font_size", getDefaultGuiFontSize()).toInt());
 	setGuiFontSize(confSettings->value("gui/gui_font_size", getDefaultGuiFontSize()).toInt());
+	setScreenButtonScale(confSettings->value("gui/screen_button_scale", 100).toDouble());
 
 	SplashScreen::present(guiFontSizeRatio());
 
@@ -937,6 +937,10 @@ void StelApp::highGraphicsModeDraw()
 	StelOpenGL::checkGLErrors(__FILE__, __LINE__);
 	if(!sceneFBO || sceneFBO->size() != QSize(w,h))
 	{
+		GLint viewport[4] = {};
+		GL(gl->glGetIntegerv(GL_VIEWPORT, viewport));
+		qDebug() << "OpenGL viewport size:" << viewport[2] << "x" << viewport[3];
+
 		qDebug().nospace() << "Creating scene FBO with size " << w << "x" << h;
 		const auto internalFormat = GL_RGBA16;
 		QOpenGLFramebufferObjectFormat format;
@@ -1382,6 +1386,7 @@ void StelApp::setDevicePixelsPerPixel(qreal dppp)
 	// Check that the device-independent pixel size didn't change
 	if (!viewportEffect && !fuzzyEquals(devicePixelsPerPixel, dppp))
 	{
+		qDebug() << "Changing high-DPI scaling factor from" << devicePixelsPerPixel << "to" << dppp;
 		devicePixelsPerPixel = dppp;
 		StelProjector::StelProjectorParams params = core->getCurrentStelProjectorParams();
 		params.devicePixelsPerPixel = devicePixelsPerPixel;
@@ -1460,6 +1465,16 @@ void StelApp::setScreenFontSize(int s)
 	}
 }
 
+void StelApp::setScreenButtonScale(const double s)
+{
+	if (screenButtonScale!=s)
+	{
+		screenButtonScale = s;
+		StelApp::immediateSave("gui/screen_button_scale", s);
+		emit screenButtonScaleChanged(s);
+	}
+}
+
 double StelApp::screenFontSizeRatio() const
 {
 	return double(getScreenFontSize()) / getDefaultGuiFontSize();
@@ -1479,6 +1494,13 @@ void StelApp::setGuiFontSize(int s)
 int StelApp::getGuiFontSize() const
 {
 	return QGuiApplication::font().pixelSize();
+}
+
+float StelApp::getScreenScale() const
+{
+	const float dppRatio = StelApp::getInstance().getDevicePixelsPerPixel();
+	const float fontRatio = StelApp::getInstance().screenFontSizeRatio();
+	return dppRatio * fontRatio;
 }
 
 void StelApp::setAppFont(QFont font)

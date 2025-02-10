@@ -212,6 +212,12 @@ void ConfigurationDialog::createDialogContent()
 	connectBoolProperty(ui->parallaxCheckBox, "StelCore.flagUseParallax");
 	connectDoubleProperty(ui->parallaxSpinBox, "StelCore.parallaxFactor");
 	connectBoolProperty(ui->topocentricCheckBox, "StelCore.flagUseTopocentricCoordinates");
+	// We cannot link flag setting to immediate storing. (GH #4112)
+	// The immediate-store is now triggered by this click
+	connect(ui->topocentricCheckBox, &QCheckBox::released, this, [=](){
+		StelApp::immediateSave("astro/flag_topocentric_coordinates",
+				       StelApp::getInstance().getStelPropertyManager()->getStelPropertyValue("StelCore.flagUseTopocentricCoordinates"));
+	});
 
 	// Additional settings for selected object info
 	connectBoolProperty(ui->checkBoxUMSurfaceBrightness, "NebulaMgr.flagSurfaceBrightnessArcsecUsage");
@@ -354,6 +360,7 @@ void ConfigurationDialog::createDialogContent()
 	// Font selection. We use a hidden, but documented entry in config.ini to optionally show a font selection option.
 	connectIntProperty(ui->screenFontSizeSpinBox, "StelApp.screenFontSize");
 	connectIntProperty(ui->guiFontSizeSpinBox, "StelApp.guiFontSize");
+	connectDoubleProperty(ui->screenButtonScaleSpinBox, "StelApp.screenButtonScale");
 	if (StelApp::getInstance().getSettings()->value("gui/flag_font_selection", true).toBool())
 	{
 		populateFontWritingSystemCombo();
@@ -1235,6 +1242,7 @@ void ConfigurationDialog::saveAllSettings()
 	//conf->setValue("gui/screen_font_size",						propMgr->getStelPropertyValue("StelApp.screenFontSize").toInt());
 	//conf->setValue("gui/gui_font_size",							propMgr->getStelPropertyValue("StelApp.guiFontSize").toInt());
 	storeFontSettings();
+	conf->setValue("gui/screen_button_scale",					propMgr->getStelPropertyValue("StelApp.screenButtonScale").toDouble());
 
 	conf->setValue("video/minimum_fps",						propMgr->getStelPropertyValue("MainView.minFps").toInt());
 	conf->setValue("video/maximum_fps",						propMgr->getStelPropertyValue("MainView.maxFps").toInt());
